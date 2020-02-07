@@ -68,6 +68,7 @@ void networkInterface2(const std::vector<uint8_t> &rSubPacket) {
 //Just for debug
 int packSize;
 
+uint64_t packetCounter;
 void sendData(const std::vector<uint8_t> &rSubPacket) {
 
   //for debugging actual bytes sent (payload bytes)
@@ -78,11 +79,77 @@ void sendData(const std::vector<uint8_t> &rSubPacket) {
   //for debugging actual bytes sent (payload bytes)
   if (rSubPacket[0] == 2) {
     packSize += rSubPacket.size() - myEFPSender.geType2Size();
-    std::cout << "Sent-> " << packSize << std::endl;
+    //std::cout << "Sent-> " << packSize << std::endl;
     packSize = 0;
   }
 
+
+  //Here is the magic. And my approach is super simple
+  //A real world implementation should look at whan retransmissions start and many other parameters.
+  //EFPBonding is changing it's parameters every 100th fragment so that's why the if below. Higher frequency
+  //modifications does not make any sense
+  if (packetCounter == 0) {
+
+    double allIfTotalEstimatedBW = 0;
+    double If1EstimatedBW = 0;
+    double If2EstimatedBW = 0;
+
+    SRT_TRACEBSTATS currentClientStats = {0};
+    mySRTNetIf1.getStatistics(&currentClientStats, SRTNetClearStats::yes, SRTNetInstant::yes);
+    allIfTotalEstimatedBW += currentClientStats.mbpsBandwidth;
+    If1EstimatedBW = currentClientStats.mbpsBandwidth;
+    mySRTNetIf1.getStatistics(&currentClientStats, SRTNetClearStats::yes, SRTNetInstant::yes);
+    allIfTotalEstimatedBW += currentClientStats.mbpsBandwidth;
+    If2EstimatedBW = currentClientStats.mbpsBandwidth;
+
+    //Should probably also check if allIfTotalEstimatedBW is lower than what you try to send.
+    //Then ask the source to lower tha BW for example
+
+    if (allIfTotalEstimatedBW) {
+      double if1Commit = (If1EstimatedBW / allIfTotalEstimatedBW) * 100.0;
+      double if2Commit = (If2EstimatedBW / allIfTotalEstimatedBW) * 100.0;
+      if (if1Commit < 1.0) {
+        if1Commit += 1.0;
+        if2Commit -= 1.0;
+      }
+      if (if2Commit < 1.0) {
+        if2Commit += 1.0;
+        if1Commit -= 1.0;
+      }
+
+
+      std::cout << "if1BW: " << If1EstimatedBW <<
+      " if2BW: " << If2EstimatedBW <<
+      " if1commit: " << if1Commit << "%" <<
+      " if2commit: " << if2Commit << "%" <<
+      std::endl;
+
+      std::vector<EFPBonding::EFPInterfaceCommit> myInterfaceCommits;
+      EFPBonding::EFPInterfaceCommit myInterfaceCommit;
+      myInterfaceCommit.mCommit = if1Commit;
+      myInterfaceCommit.mGroupID = groupID[0];
+      myInterfaceCommit.mInterfaceID = groupInterfacesID[0];
+      myInterfaceCommits.push_back(myInterfaceCommit);
+      myInterfaceCommit.mCommit = if2Commit;
+      myInterfaceCommit.mGroupID = groupID[0];
+      myInterfaceCommit.mInterfaceID = groupInterfacesID[1];
+      myInterfaceCommits.push_back(myInterfaceCommit);
+      EFPBondingMessages result = myEFPBonding.modifyTotalGroupCommit(myInterfaceCommits);
+      if (result != EFPBondingMessages::noError) {
+        std::cout << "Error modifyTotalGroupCommit -> " << unsigned(result) << std::endl;
+      }
+    } else {
+      std::cout << "SRT reports no available BW.. I guess that's kind of fatal." << std::endl;
+    }
+  }
+
   myEFPBonding.distributeDataGroup(rSubPacket);
+
+  packetCounter++;
+  if (packetCounter == 100) {
+    packetCounter = 0;
+  }
+
 }
 
 void handleDataClient(std::unique_ptr<std::vector<uint8_t>> &content,
@@ -94,6 +161,7 @@ void handleDataClient(std::unique_ptr<std::vector<uint8_t>> &content,
 
 int main() {
   packSize = 0;
+  packetCounter = 0;
 
   //Set-up framing protocol
   myEFPSender.sendCallback = std::bind(&sendData, std::placeholders::_1);
@@ -147,7 +215,7 @@ int main() {
   uint64_t dts = 0;
   for (int i = 0; i < WORKER_VIDEO_FRAMES; ++i) {
     std::vector<uint8_t> thisNalData = getNALUnit(i + 1);
-    std::cout << "SendNAL > " << thisNalData.size() << " pts " << pts << std::endl;
+    //std::cout << "SendNAL > " << thisNalData.size() << " pts " << pts << std::endl;
     //We got no DTS in this example set to PTS if no DTS is available (In this version of EFP DTS MUST be set to PTS if not available)
     dts = pts;
     myEFPSender.packAndSend(thisNalData,
