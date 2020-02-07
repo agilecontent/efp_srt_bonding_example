@@ -20,7 +20,6 @@
 # Compiled Static libraries
 *.lai
 *.la
-*.a
 *.lib
 
 # Executables
@@ -74,14 +73,18 @@ crashlytics.properties
 crashlytics-build.properties
 fabric.properties
 
-#visual studio
-.vs/
-
 # Build directories
 /cmake-build-debug/
 /cmake-build-release/
 
-# ignore all efp files
+#srt folder
+srtwrap/*
+!srtwrap/.gitkeep 
+
+#efp folder
 efp/*
-# don't ignore .gitkeep files
-!.gitkeep
+!efp/.gitkeep 
+
+#efpbond folder
+efpbond/*
+!efpbond/.gitkeep 
