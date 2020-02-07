@@ -15,11 +15,24 @@ a SRT C++ wrapper used by this example. The wrapper is located [here](https://gi
 
 **All architectures:**
 
+All dependencies should download and compile.
+
+Change the IP's and ports in the code to work for your environment. Default local host is used.
+
 ```
 cmake .
 make
 mkdir tmp
-mv cppSRTFramingClient tmp/
+mv cppsrtbondingclient tmp/
 ```
 
 **Run the system:**
+
+
+```
+1. Start the server 
+./cppsrtbondingserver
+2. then open up another terminal (sampe path) and.
+cd tmp
+./cppsrtbondingclient
+```
