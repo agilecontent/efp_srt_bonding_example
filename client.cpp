@@ -1,12 +1,20 @@
 #include <iostream>
 #include "efp/ElasticFrameProtocol.h"
+#include "efpbond/EFPBonding.h"
 #include "srtwrap/SRTNet.h"
 
 #define MTU 1456 //SRT-max
 #define WORKER_VIDEO_FRAMES 3000
 
-SRTNet mySRTNetClient; //The SRT client
+#define NO_GROUP_INTERFACES 3
+#define NO_GROUPS 1
+EFPBonding::EFPBondingInterfaceID groupInterfacesID[NO_GROUP_INTERFACES];
+EFPBonding::EFPBondingGroupID groupID[NO_GROUPS];
+
+SRTNet mySRTNetIf1; //The SRT interface1
+SRTNet mySRTNetIf2; //The SRT interface2
 ElasticFrameProtocol myEFPSender(MTU, ElasticFrameMode::sender); //EFP sender
+EFPBonding myEFPBonding; //The EFP bonding plug in
 
 //This will act as our encoder and just provide us with a H264 AnnexB frame when we want one.
 std::vector<uint8_t> getNALUnit(int i) {
@@ -39,29 +47,42 @@ std::vector<uint8_t> getNALUnit(int i) {
   return my_vector;
 }
 
+void networkInterface1(const std::vector<uint8_t> &rSubPacket) {
+  SRT_MSGCTRL thisMSGCTRL1 = srt_msgctrl_default;
+  bool result = mySRTNetIf1.sendData((uint8_t *) rSubPacket.data(), rSubPacket.size(), &thisMSGCTRL1);
+  if (!result) {
+    std::cout << "Failed sending if1. Deal with that." << std::endl;
+    //mySRTNetClient.stop(); ?? then reconnect?? try again for x times?? Notify the user?? Use a alternative socket??
+  }
+}
+
+void networkInterface2(const std::vector<uint8_t> &rSubPacket) {
+  SRT_MSGCTRL thisMSGCTRL1 = srt_msgctrl_default;
+  bool result = mySRTNetIf2.sendData((uint8_t *) rSubPacket.data(), rSubPacket.size(), &thisMSGCTRL1);
+  if (!result) {
+    std::cout << "Failed sending if2. Deal with that." << std::endl;
+    //mySRTNetClient.stop(); ?? then reconnect?? try again for x times?? Notify the user?? Use a alternative socket??
+  }
+}
+
 //Just for debug
 int packSize;
 
-void sendData(const std::vector<uint8_t> &subPacket) {
+void sendData(const std::vector<uint8_t> &rSubPacket) {
 
   //for debugging actual bytes sent (payload bytes)
-  if (subPacket[0] == 1 || subPacket[0] == 3) {
-    packSize += subPacket.size() - myEFPSender.geType1Size();
+  if (rSubPacket[0] == 1 || rSubPacket[0] == 3) {
+    packSize += rSubPacket.size() - myEFPSender.geType1Size();
   }
 
   //for debugging actual bytes sent (payload bytes)
-  if (subPacket[0] == 2) {
-    packSize += subPacket.size() - myEFPSender.geType2Size();
+  if (rSubPacket[0] == 2) {
+    packSize += rSubPacket.size() - myEFPSender.geType2Size();
     std::cout << "Sent-> " << packSize << std::endl;
     packSize = 0;
   }
 
-  SRT_MSGCTRL thisMSGCTRL1 = srt_msgctrl_default;
-  bool result = mySRTNetClient.sendData((uint8_t *) subPacket.data(), subPacket.size(), &thisMSGCTRL1);
-  if (!result) {
-    std::cout << "Failed sending. Deal with that." << std::endl;
-    //mySRTNetClient.stop(); ?? then reconnect?? try again for x times?? Notify the user?? Use a alternative socket??
-  }
+  myEFPBonding.distributeDataGroup(rSubPacket);
 }
 
 void handleDataClient(std::unique_ptr<std::vector<uint8_t>> &content,
@@ -79,13 +100,45 @@ int main() {
 
   //Set-up SRT
   auto client1Connection = std::make_shared<NetworkConnection>();
-  mySRTNetClient.recievedData = std::bind(&handleDataClient,
+  mySRTNetIf1.recievedData = std::bind(&handleDataClient,
                                           std::placeholders::_1,
                                           std::placeholders::_2,
                                           std::placeholders::_3,
                                           std::placeholders::_4);
-  if (!mySRTNetClient.startClient("127.0.0.1", 8000, 16, 1000, 100, client1Connection, MTU)) {
-    std::cout << "SRT client1 failed starting." << std::endl;
+  if (!mySRTNetIf1.startClient("127.0.0.1", 8000, 16, 1000, 100, client1Connection, MTU)) {
+    std::cout << "SRT if1 failed starting." << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  auto client2Connection = std::make_shared<NetworkConnection>();
+  mySRTNetIf2.recievedData = std::bind(&handleDataClient,
+                                       std::placeholders::_1,
+                                       std::placeholders::_2,
+                                       std::placeholders::_3,
+                                       std::placeholders::_4);
+  if (!mySRTNetIf2.startClient("127.0.0.1", 8000, 16, 1000, 100, client2Connection, MTU)) {
+    std::cout << "SRT if2 failed starting." << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  //Create bonding group
+  EFPBonding::EFPInterface lInterface;
+  std::vector<EFPBonding::EFPInterface> lInterfaces;
+  EFPBonding::EFPBondingInterfaceID ifID = myEFPBonding.generateInterfaceID();
+  lInterface.mInterfaceID = ifID;
+  groupInterfacesID[0] = ifID;
+  lInterface.mInterfaceLocation = std::bind(&networkInterface1, std::placeholders::_1);
+  lInterface.mMasterInterface = EFP_MASTER_INTERFACE;
+  lInterfaces.push_back(lInterface);
+  ifID = myEFPBonding.generateInterfaceID();
+  lInterface.mInterfaceID = ifID;
+  groupInterfacesID[1] = ifID;
+  lInterface.mInterfaceLocation = std::bind(&networkInterface2, std::placeholders::_1);
+  lInterface.mMasterInterface = EFP_NORMAL_INTERFACE;
+  lInterfaces.push_back(lInterface);
+  groupID[0] = myEFPBonding.addInterfaceGroup(lInterfaces);
+  if (!groupID[0]) {
+    std::cout << "Failed bonding the interfaces" << std::endl;
     return EXIT_FAILURE;
   }
 
@@ -109,7 +162,7 @@ int main() {
     pts += 90000 / 60; //fake a pts of 60Hz. FYI.. the codestream is 23.98 (I and P only)
     usleep(1000 * 16); //sleep for 16ms ~60Hz
   }
-  mySRTNetClient.stop();
+  mySRTNetIf1.stop();
   std::cout << "Done sending will exit" << std::endl;
   return 0;
 }

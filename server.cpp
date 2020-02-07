@@ -58,7 +58,7 @@ std::shared_ptr<NetworkConnection> validateConnection(struct sockaddr_in *sin) {
   // In this case we put MyClass in containing the EFP ID we got from getEFPId() and a EFP-receiver
   auto a1 = std::make_shared<NetworkConnection>(); // Create a connection
   a1->object = std::make_shared<MyClass>(); // And my object containing my stuff
-  § //Then get a pointer to my stuff
+  auto v = std::any_cast<std::shared_ptr<MyClass> &>(a1->object); //Then get a pointer to my stuff
   v->efpId = efpId; // Populate it with the efpId
   v->efpActiveElement =
       &efpActiveList[efpId]; // And a pointer to the list so that we invalidate the id when SRT drops the connection
