@@ -1,4 +1,4 @@
-![alt text](https://bitbucket.org/unitxtra/cppsrtframingexample/raw/44dbc90c2f53ca12977dcfeffa4d8875f5280a02/efpsrt.png)
+![alt text](https://bitbucket.org/andersced/cppsrtbondingexample/raw/02a3724aa21c95d4d3e3f59bdcab2f3d68de3ba0/efpbond.png)
 
 # SRT + EFPBonding example
 
