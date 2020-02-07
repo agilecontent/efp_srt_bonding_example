@@ -163,6 +163,7 @@ int main() {
     usleep(1000 * 16); //sleep for 16ms ~60Hz
   }
   mySRTNetIf1.stop();
+  mySRTNetIf2.stop();
   std::cout << "Done sending will exit" << std::endl;
   return 0;
 }

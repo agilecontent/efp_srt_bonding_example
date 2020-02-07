@@ -12,33 +12,10 @@ void gotData(ElasticFrameProtocol::pFramePtr &rPacket);
 //Server part
 //**********************************
 
-// This is the class and everything you want to associate with a SRT connection
-// You can see this as a classic c-'void* context' on steroids since SRTNet will own it and handle
-// it's lifecycle. The destructor is called when the SRT connection is terminated. Magic!
+//This server is super simple and not dynamic. It assumes all connections are from the same bonding interface
+//A real implementation need to signal som kind of token binding the connections together
 
-class MyClass {
-public:
-  virtual ~MyClass() {
-    *efpActiveElement = false; //Release active marker
-    myEFPReceiver.stopReceiver();
-  };
-  uint8_t efpId = 0;
-  std::atomic_bool *efpActiveElement;
-  ElasticFrameProtocol myEFPReceiver;
-};
-
-// Array of 256 possible EFP receivers, could be millions but I just decided 256 change to your needs.
-// You could make it much simpler just giving a new connection a uint64_t number++
-std::atomic_bool efpActiveList[UINT8_MAX] = {false};
-uint8_t getEFPId() {
-  for (int i = 1; i < UINT8_MAX - 1; i++) {
-    if (!efpActiveList[i]) {
-      efpActiveList[i] = true; //Set active
-      return i;
-    }
-  }
-  return UINT8_MAX;
-}
+ElasticFrameProtocol myEFPReceiver;
 
 // Return a connection object. (Return nullptr if you don't want to connect to that client)
 std::shared_ptr<NetworkConnection> validateConnection(struct sockaddr_in *sin) {
@@ -47,24 +24,7 @@ std::shared_ptr<NetworkConnection> validateConnection(struct sockaddr_in *sin) {
             << unsigned(ip[3]) << std::endl;
   // Validate connection.. Do we have resources to accept it? Is it from someone we want to talk to?
 
-  //Get EFP ID.
-  uint8_t efpId = getEFPId();
-  if (efpId == UINT8_MAX) {
-    std::cout << "Unable to accept more EFP connections " << std::endl;
-    return nullptr;
-  }
-
-  // Here we can put whatever into the connection. The object we embed is maintained by SRTNet
-  // In this case we put MyClass in containing the EFP ID we got from getEFPId() and a EFP-receiver
   auto a1 = std::make_shared<NetworkConnection>(); // Create a connection
-  a1->object = std::make_shared<MyClass>(); // And my object containing my stuff
-  auto v = std::any_cast<std::shared_ptr<MyClass> &>(a1->object); //Then get a pointer to my stuff
-  v->efpId = efpId; // Populate it with the efpId
-  v->efpActiveElement =
-      &efpActiveList[efpId]; // And a pointer to the list so that we invalidate the id when SRT drops the connection
-  v->myEFPReceiver.receiveCallback =
-      std::bind(&gotData, std::placeholders::_1); //In this example we aggregate all callbacks..
-  v->myEFPReceiver.startReceiver(10, 2);
   return a1; // Now hand over the ownership to SRTNet
 }
 
@@ -74,9 +34,10 @@ bool handleData(std::unique_ptr<std::vector<uint8_t>> &content,
                 std::shared_ptr<NetworkConnection> ctx,
                 SRTSOCKET clientHandle) {
   //We got data from SRTNet
-  auto v = std::any_cast<std::shared_ptr<MyClass> &>(ctx->object); //Get my object I gave SRTNet
-  v->myEFPReceiver.receiveFragment(*content,
-                                   v->efpId); //unpack the fragment I got using the efpId created at connection time.
+  ElasticFrameMessages result = myEFPReceiver.receiveFragment(*content,0);
+  if (result != ElasticFrameMessages::noError) {
+    std::cout << "Error" << std::endl;
+  }
   return true;
 }
 
@@ -93,6 +54,10 @@ void gotData(ElasticFrameProtocol::pFramePtr &rPacket) {
 
 int main() {
 
+  //Set-up EFP
+  myEFPReceiver.receiveCallback = std::bind(&gotData, std::placeholders::_1);
+  myEFPReceiver.startReceiver(10, 2);
+  
   //Setup and start the SRT server
   mySRTNetServer.clientConnected = std::bind(&validateConnection, std::placeholders::_1);
   mySRTNetServer.recievedData = std::bind(&handleData,
