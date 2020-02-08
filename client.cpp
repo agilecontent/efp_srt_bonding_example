@@ -125,15 +125,8 @@ void sendData(const std::vector<uint8_t> &rSubPacket) {
       std::endl;
 
       std::vector<EFPBonding::EFPInterfaceCommit> myInterfaceCommits;
-      EFPBonding::EFPInterfaceCommit myInterfaceCommit;
-      myInterfaceCommit.mCommit = if1Commit;
-      myInterfaceCommit.mGroupID = groupID[0];
-      myInterfaceCommit.mInterfaceID = groupInterfacesID[0];
-      myInterfaceCommits.push_back(myInterfaceCommit);
-      myInterfaceCommit.mCommit = if2Commit;
-      myInterfaceCommit.mGroupID = groupID[0];
-      myInterfaceCommit.mInterfaceID = groupInterfacesID[1];
-      myInterfaceCommits.push_back(myInterfaceCommit);
+      myInterfaceCommits.push_back(EFPBonding::EFPInterfaceCommit(if1Commit, groupID[0], groupInterfacesID[0]));
+      myInterfaceCommits.push_back(EFPBonding::EFPInterfaceCommit(if2Commit, groupID[0], groupInterfacesID[1]));
       EFPBondingMessages result = myEFPBonding.modifyTotalGroupCommit(myInterfaceCommits);
       if (result != EFPBondingMessages::noError) {
         std::cout << "Error modifyTotalGroupCommit -> " << unsigned(result) << std::endl;
@@ -190,20 +183,12 @@ int main() {
   }
 
   //Create bonding group
-  EFPBonding::EFPInterface lInterface;
+
   std::vector<EFPBonding::EFPInterface> lInterfaces;
-  EFPBonding::EFPBondingInterfaceID ifID = myEFPBonding.generateInterfaceID();
-  lInterface.mInterfaceID = ifID;
-  groupInterfacesID[0] = ifID;
-  lInterface.mInterfaceLocation = std::bind(&networkInterface1, std::placeholders::_1);
-  lInterface.mMasterInterface = EFP_MASTER_INTERFACE;
-  lInterfaces.push_back(lInterface);
-  ifID = myEFPBonding.generateInterfaceID();
-  lInterface.mInterfaceID = ifID;
-  groupInterfacesID[1] = ifID;
-  lInterface.mInterfaceLocation = std::bind(&networkInterface2, std::placeholders::_1);
-  lInterface.mMasterInterface = EFP_NORMAL_INTERFACE;
-  lInterfaces.push_back(lInterface);
+  groupInterfacesID[0] = myEFPBonding.generateInterfaceID();
+  lInterfaces.push_back(EFPBonding::EFPInterface(groupInterfacesID[0],std::bind(&networkInterface1, std::placeholders::_1), EFP_MASTER_INTERFACE));
+  groupInterfacesID[1] = myEFPBonding.generateInterfaceID();
+  lInterfaces.push_back(EFPBonding::EFPInterface(groupInterfacesID[1],std::bind(&networkInterface2, std::placeholders::_1), EFP_NORMAL_INTERFACE));
   groupID[0] = myEFPBonding.addInterfaceGroup(lInterfaces);
   if (!groupID[0]) {
     std::cout << "Failed bonding the interfaces" << std::endl;
