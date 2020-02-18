@@ -69,7 +69,7 @@ void networkInterface2(const std::vector<uint8_t> &rSubPacket) {
 int packSize;
 
 uint64_t packetCounter;
-void sendData(const std::vector<uint8_t> &rSubPacket) {
+void sendData(const std::vector<uint8_t> &rSubPacket, uint8_t streamID) {
 
   //for debugging actual bytes sent (payload bytes)
   if (rSubPacket[0] == 1 || rSubPacket[0] == 3) {
@@ -125,9 +125,9 @@ void sendData(const std::vector<uint8_t> &rSubPacket) {
       std::endl;
 
       std::vector<EFPBonding::EFPInterfaceCommit> myInterfaceCommits;
-      myInterfaceCommits.push_back(EFPBonding::EFPInterfaceCommit(if1Commit, groupID[0], groupInterfacesID[0]));
-      myInterfaceCommits.push_back(EFPBonding::EFPInterfaceCommit(if2Commit, groupID[0], groupInterfacesID[1]));
-      EFPBondingMessages result = myEFPBonding.modifyTotalGroupCommit(myInterfaceCommits);
+      myInterfaceCommits.push_back(EFPBonding::EFPInterfaceCommit(if1Commit, groupInterfacesID[0]));
+      myInterfaceCommits.push_back(EFPBonding::EFPInterfaceCommit(if2Commit, groupInterfacesID[1]));
+      EFPBondingMessages result = myEFPBonding.modifyInterfaceCommits(myInterfaceCommits,groupID[0]);
       if (result != EFPBondingMessages::noError) {
         std::cout << "Error modifyTotalGroupCommit -> " << unsigned(result) << std::endl;
       }
@@ -136,7 +136,7 @@ void sendData(const std::vector<uint8_t> &rSubPacket) {
     }
   }
 
-  myEFPBonding.distributeDataGroup(rSubPacket);
+  myEFPBonding.distributeDataGroup(rSubPacket,0);
 
   packetCounter++;
   if (packetCounter == 100) {
@@ -157,7 +157,7 @@ int main() {
   packetCounter = 0;
 
   //Set-up framing protocol
-  myEFPSender.sendCallback = std::bind(&sendData, std::placeholders::_1);
+  myEFPSender.sendCallback = std::bind(&sendData, std::placeholders::_1, std::placeholders::_2);
 
   //Set-up SRT
   auto client1Connection = std::make_shared<NetworkConnection>();
@@ -186,9 +186,9 @@ int main() {
 
   std::vector<EFPBonding::EFPInterface> lInterfaces;
   groupInterfacesID[0] = myEFPBonding.generateInterfaceID();
-  lInterfaces.push_back(EFPBonding::EFPInterface(groupInterfacesID[0],std::bind(&networkInterface1, std::placeholders::_1), EFP_MASTER_INTERFACE));
+  lInterfaces.push_back(EFPBonding::EFPInterface(std::bind(&networkInterface1, std::placeholders::_1), groupInterfacesID[0], EFP_MASTER_INTERFACE));
   groupInterfacesID[1] = myEFPBonding.generateInterfaceID();
-  lInterfaces.push_back(EFPBonding::EFPInterface(groupInterfacesID[1],std::bind(&networkInterface2, std::placeholders::_1), EFP_NORMAL_INTERFACE));
+  lInterfaces.push_back(EFPBonding::EFPInterface(std::bind(&networkInterface2, std::placeholders::_1), groupInterfacesID[1], EFP_NORMAL_INTERFACE));
   groupID[0] = myEFPBonding.addInterfaceGroup(lInterfaces);
   if (!groupID[0]) {
     std::cout << "Failed bonding the interfaces" << std::endl;

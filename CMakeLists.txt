@@ -17,6 +17,7 @@ ExternalProject_Add(project_efp
         )
 add_library(efp STATIC IMPORTED)
 set_property(TARGET efp PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/efp/libefp.a)
+add_dependencies(efp project_efp)
 
 ExternalProject_Add(project_efpbond
         GIT_REPOSITORY https://andersced@bitbucket.org/unitxtra/efpbond.git
@@ -31,6 +32,7 @@ ExternalProject_Add(project_efpbond
         )
 add_library(efpbond STATIC IMPORTED)
 set_property(TARGET efpbond PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/efpbond/libefpbond.a)
+add_dependencies(efpbond project_efpbond)
 
 ExternalProject_Add(project_cppsrtwrapp
         GIT_REPOSITORY https://github.com/andersc/cppSRTWrapper.git
@@ -44,6 +46,7 @@ ExternalProject_Add(project_cppsrtwrapp
         )
 add_library(srtnet STATIC IMPORTED)
 set_property(TARGET srtnet PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/srtwrap/libsrtnet.a)
+add_dependencies(srtnet project_cppsrtwrapp)
 
 find_package (Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
@@ -51,13 +54,8 @@ find_package(OpenSSL REQUIRED)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/srtwrap/srt/)
 
 add_executable(cppsrtbondingclient client.cpp)
-add_dependencies(cppsrtbondingclient project_efp)
-add_dependencies(cppsrtbondingclient project_efpbond)
-add_dependencies(cppsrtbondingclient project_cppsrtwrapp)
 target_link_libraries(cppsrtbondingclient efp efpbond srtnet ${CMAKE_CURRENT_SOURCE_DIR}/srtwrap/srt/libsrt.a ${OPENSSL_LIBRARIES} Threads::Threads)
 
 add_executable(cppsrtbondingserver server.cpp)
-add_dependencies(cppsrtbondingserver project_efp)
-add_dependencies(cppsrtbondingserver project_cppsrtwrapp)
 target_link_libraries(cppsrtbondingserver efp srtnet ${CMAKE_CURRENT_SOURCE_DIR}/srtwrap/srt/libsrt.a ${OPENSSL_LIBRARIES} Threads::Threads)
 
