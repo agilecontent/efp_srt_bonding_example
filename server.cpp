@@ -6,7 +6,7 @@
 
 SRTNet mySRTNetServer; //SRT
 
-void gotData(ElasticFrameProtocol::pFramePtr &rPacket);
+void gotData(ElasticFrameProtocolReceiver::pFramePtr &rPacket);
 
 //**********************************
 //Server part
@@ -15,7 +15,7 @@ void gotData(ElasticFrameProtocol::pFramePtr &rPacket);
 //This server is super simple and not dynamic. It assumes all connections are from the same bonding interface
 //A real implementation need to signal som kind of token binding the connections together
 
-ElasticFrameProtocol myEFPReceiver;
+ElasticFrameProtocolReceiver myEFPReceiver(10, 2);
 
 // Return a connection object. (Return nullptr if you don't want to connect to that client)
 std::shared_ptr<NetworkConnection> validateConnection(struct sockaddr_in *sin) {
@@ -44,7 +44,7 @@ bool handleData(std::unique_ptr<std::vector<uint8_t>> &content,
 //ElasticFrameProtocol got som data from some efpSource.. Everything you need to know is in the rPacket
 //meaning EFP stream number EFP id and content type. if it's broken the PTS value
 //code with additional information of payload variant and if there is embedded data to extract and so on.
-void gotData(ElasticFrameProtocol::pFramePtr &rPacket) {
+void gotData(ElasticFrameProtocolReceiver::pFramePtr &rPacket) {
   std::cout << "BAM... Got some NAL-units of size " << unsigned(rPacket->mFrameSize) <<
             " pts " << unsigned(rPacket->mPts) <<
             " is broken? " << rPacket->mBroken <<
@@ -56,8 +56,7 @@ int main() {
 
   //Set-up EFP
   myEFPReceiver.receiveCallback = std::bind(&gotData, std::placeholders::_1);
-  myEFPReceiver.startReceiver(10, 2);
-  
+
   //Setup and start the SRT server
   mySRTNetServer.clientConnected = std::bind(&validateConnection, std::placeholders::_1);
   mySRTNetServer.recievedData = std::bind(&handleData,

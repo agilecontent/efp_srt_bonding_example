@@ -13,7 +13,7 @@ EFPBonding::EFPBondingGroupID groupID[NO_GROUPS];
 
 SRTNet mySRTNetIf1; //The SRT interface1
 SRTNet mySRTNetIf2; //The SRT interface2
-ElasticFrameProtocol myEFPSender(MTU, ElasticFrameMode::sender); //EFP sender
+ElasticFrameProtocolSender myEFPSender(MTU); //EFP sender
 EFPBonding myEFPBonding; //The EFP bonding plug in
 
 //This will act as our encoder and just provide us with a H264 AnnexB frame when we want one.
