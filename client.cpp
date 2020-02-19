@@ -136,7 +136,7 @@ void sendData(const std::vector<uint8_t> &rSubPacket, uint8_t streamID) {
     }
   }
 
-  myEFPBonding.distributeDataGroup(rSubPacket,0);
+  myEFPBonding.distributeData(rSubPacket,0);
 
   packetCounter++;
   if (packetCounter == 100) {
