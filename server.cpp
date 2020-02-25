@@ -18,11 +18,32 @@ void gotData(ElasticFrameProtocolReceiver::pFramePtr &rPacket);
 ElasticFrameProtocolReceiver myEFPReceiver(10, 2);
 
 // Return a connection object. (Return nullptr if you don't want to connect to that client)
-std::shared_ptr<NetworkConnection> validateConnection(struct sockaddr_in *sin) {
-  auto *ip = (unsigned char *) &sin->sin_addr.s_addr;
-  std::cout << "Connecting IP: " << unsigned(ip[0]) << "." << unsigned(ip[1]) << "." << unsigned(ip[2]) << "."
-            << unsigned(ip[3]) << std::endl;
-  // Validate connection.. Do we have resources to accept it? Is it from someone we want to talk to?
+std::shared_ptr<NetworkConnection> validateConnection(struct sockaddr &sin) {
+
+  char addrIPv6[INET6_ADDRSTRLEN];
+
+  if (sin.sa_family == AF_INET) {
+    struct sockaddr_in* inConnectionV4 = (struct sockaddr_in*) &sin;
+    auto *ip = (unsigned char *) &inConnectionV4->sin_addr.s_addr;
+    std::cout << "Connecting IPv4: " << unsigned(ip[0]) << "." << unsigned(ip[1]) << "." << unsigned(ip[2]) << "."
+              << unsigned(ip[3]) << std::endl;
+
+    //Do we want to accept this connection?
+    //return nullptr;
+
+
+  } else if (sin.sa_family == AF_INET6) {
+    struct sockaddr_in6* inConnectionV6 = (struct sockaddr_in6*) &sin;
+    inet_ntop(AF_INET6, &inConnectionV6->sin6_addr, addrIPv6, INET6_ADDRSTRLEN);
+    printf("Connecting IPv6: %s\n", addrIPv6);
+
+    //Do we want to accept this connection?
+    //return nullptr;
+
+  } else {
+    //Not IPv4 and not IPv6. That's weird. don't connect.
+    return nullptr;
+  }
 
   auto a1 = std::make_shared<NetworkConnection>(); // Create a connection
   return a1; // Now hand over the ownership to SRTNet
