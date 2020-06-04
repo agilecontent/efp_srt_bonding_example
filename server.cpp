@@ -80,7 +80,7 @@ int main() {
 
   //Setup and start the SRT server
   mySRTNetServer.clientConnected = std::bind(&validateConnection, std::placeholders::_1);
-  mySRTNetServer.recievedData = std::bind(&handleData,
+  mySRTNetServer.receivedData = std::bind(&handleData,
                                           std::placeholders::_1,
                                           std::placeholders::_2,
                                           std::placeholders::_3,

@@ -161,7 +161,7 @@ int main() {
 
   //Set-up SRT
   auto client1Connection = std::make_shared<NetworkConnection>();
-  mySRTNetIf1.recievedData = std::bind(&handleDataClient,
+  mySRTNetIf1.receivedData = std::bind(&handleDataClient,
                                           std::placeholders::_1,
                                           std::placeholders::_2,
                                           std::placeholders::_3,
@@ -172,7 +172,7 @@ int main() {
   }
 
   auto client2Connection = std::make_shared<NetworkConnection>();
-  mySRTNetIf2.recievedData = std::bind(&handleDataClient,
+  mySRTNetIf2.receivedData = std::bind(&handleDataClient,
                                        std::placeholders::_1,
                                        std::placeholders::_2,
                                        std::placeholders::_3,
