@@ -15,7 +15,7 @@ void gotData(ElasticFrameProtocolReceiver::pFramePtr &rPacket);
 //This server is super simple and not dynamic. It assumes all connections are from the same bonding interface
 //A real implementation need to signal som kind of token binding the connections together
 
-ElasticFrameProtocolReceiver myEFPReceiver(10, 2);
+ElasticFrameProtocolReceiver myEFPReceiver(100, 20);
 
 // Return a connection object. (Return nullptr if you don't want to connect to that client)
 std::shared_ptr<NetworkConnection> validateConnection(struct sockaddr &sin) {
