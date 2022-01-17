@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 include(ExternalProject)
 ExternalProject_Add(project_efp
-        GIT_REPOSITORY https://github.com/Unit-X/efp.git
+        GIT_REPOSITORY https://github.com/agilecontent/efp.git
         GIT_SUBMODULES ""
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/efp
         BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/efp
@@ -20,7 +20,7 @@ set_property(TARGET efp PROPERTY IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/e
 add_dependencies(efp project_efp)
 
 ExternalProject_Add(project_efpbond
-        GIT_REPOSITORY https://github.com/Unit-X/efpbond.git
+        GIT_REPOSITORY https://github.com/agilecontent/efpbond.git
         GIT_SUBMODULES ""
         SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/efpbond
         BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/efpbond
